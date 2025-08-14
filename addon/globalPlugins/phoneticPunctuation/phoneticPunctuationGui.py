@@ -95,7 +95,7 @@ class AudioRuleDialog(wx.Dialog):
                     pass
             self.possibleFrenzyValues = possibleFrenzyValues
             self.possibleFrenzyObjects = possibleFrenzyObjects
-        elif frenzyType        in [FrenzyType.TEXT, FrenzyType.CHARACTER]:
+        elif frenzyType        in [FrenzyType.PRE_TEXT_REWRITE, FrenzyType.TEXT, FrenzyType.CHARACTER]:
             self.possibleFrenzyValues = []
         elif frenzyType        == FrenzyType.FORMAT:
             self.possibleFrenzyValues = [TEXT_FORMAT_NAMES[f] for f in TextFormat]
@@ -141,7 +141,11 @@ class AudioRuleDialog(wx.Dialog):
         typeChoices = [AudioRuleDialog.TYPE_LABELS[i] for i in self.possibleTypes]
         self.typeRadioBox=sHelper.addItem(wx.RadioBox(self,label=typeText, choices=typeChoices))
         self.typeRadioBox.Bind(wx.EVT_RADIOBOX,self.onType)
-        self.setType(audioRuleTextSubstitution if frenzyType == FrenzyType.NUMERIC_FORMAT else audioRuleBuiltInWave)
+        self.setType(
+            audioRuleTextSubstitution
+            if frenzyType in [FrenzyType.PRE_TEXT_REWRITE, FrenzyType.NUMERIC_FORMAT]
+            else audioRuleBuiltInWave
+        )
 
         self.typeControls = {
             audioRuleBuiltInWave: [],
@@ -293,7 +297,7 @@ class AudioRuleDialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON,self.onOk,id=wx.ID_OK)
       # Touching up
         self.onType(None)
-        if self.frenzyType in [FrenzyType.TEXT, FrenzyType.CHARACTER]:
+        if self.frenzyType in [FrenzyType.PRE_TEXT_REWRITE, FrenzyType.TEXT, FrenzyType.CHARACTER]:
             self.frenzyValueCategory.control.Disable()
         else:
             self.patternTextCtrl.Disable()
@@ -305,7 +309,7 @@ class AudioRuleDialog(wx.Dialog):
             self.windowTitleRegexTextCtrl,
             self.urlRegexTextCtrl,
         ]:
-            textFilterTextCtrl.Enable(self.frenzyType in [FrenzyType.TEXT])
+            textFilterTextCtrl.Enable(self.frenzyType in [FrenzyType.PRE_TEXT_REWRITE, FrenzyType.TEXT])
 
 
     def getType(self):
@@ -338,7 +342,7 @@ class AudioRuleDialog(wx.Dialog):
             idx = list(NumericTextFormat).index(rule.getFrenzyValue())
         elif self.frenzyType        == FrenzyType.OTHER_RULE:
             idx = list(OtherRule).index(rule.getFrenzyValue())
-        elif self.frenzyType        in [FrenzyType.TEXT, FrenzyType.CHARACTER]:
+        elif self.frenzyType        in [FrenzyType.PRE_TEXT_REWRITE, FrenzyType.TEXT, FrenzyType.CHARACTER]:
             pass
         else:
             raise ValueError
@@ -372,7 +376,7 @@ class AudioRuleDialog(wx.Dialog):
         self.onType(None)
 
     def makeRule(self):
-        if self.frenzyType == FrenzyType.TEXT:
+        if self.frenzyType in [FrenzyType.PRE_TEXT_REWRITE, FrenzyType.TEXT]:
             if not self.patternTextCtrl.GetValue():
                 # Translators: This is an error message to let the user know that the pattern field is not valid.
                 gui.messageBox(_("A pattern is required."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
@@ -716,7 +720,8 @@ class RulesDialog(SettingsPanel):
             choices=[FRENZY_NAMES[ft] for ft in FrenzyType]
         )
         self.frenzyCategory.control.Bind(wx.EVT_CHOICE,self.onFrenzyType)
-        self.frenzyCategory.control.SetSelection(0)
+        textIndex = list(FrenzyType).index(FrenzyType.TEXT)
+        self.frenzyCategory.control.SetSelection(textIndex)
         self.frenzyType = None
 
       # Rules table
