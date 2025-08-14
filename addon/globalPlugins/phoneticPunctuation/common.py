@@ -27,6 +27,7 @@ audioRuleTypes = [
 ]
 
 class FrenzyType(Enum):
+    PRE_TEXT_REWRITE = 'pre_text_rewrite'
     TEXT = 'text'
     CHARACTER = 'character'
     ROLE = 'role'
@@ -38,6 +39,7 @@ class FrenzyType(Enum):
 
 
 FRENZY_NAMES = {
+    FrenzyType.PRE_TEXT_REWRITE: _("Pre‑rewrite (regex with groups)"),
     FrenzyType.TEXT: _("Text regular expressions"),
     FrenzyType.CHARACTER: _("Characters"),
     FrenzyType.ROLE: _("Roles"),
@@ -49,6 +51,7 @@ FRENZY_NAMES = {
 }
 
 FRENZY_NAMES_SINGULAR = {
+    FrenzyType.PRE_TEXT_REWRITE: _("Pre‑rewrite regex pattern"),
     FrenzyType.TEXT: _("Text regular expression pattern"),
     FrenzyType.CHARACTER: _("Character"),
     FrenzyType.ROLE: _("Role"),
@@ -111,6 +114,9 @@ OTHER_RULE_NAMES = {
 }
 
 ALLOWED_TYPES_BY_FRENZY_TYPE = {
+    FrenzyType.PRE_TEXT_REWRITE: [
+        audioRuleTextSubstitution,
+    ],
     FrenzyType.TEXT: [
         audioRuleBuiltInWave,
         audioRuleWave,

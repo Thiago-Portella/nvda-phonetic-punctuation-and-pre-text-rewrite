@@ -150,7 +150,7 @@ class AudioRule:
         self.speechCommand, self.postSpeechCommand = self.getSpeechCommand()
 
     def getDisplayName(self):
-        if self.getFrenzyType() in [FrenzyType.TEXT, FrenzyType.CHARACTER]:
+        if self.getFrenzyType() in [FrenzyType.PRE_TEXT_REWRITE, FrenzyType.TEXT, FrenzyType.CHARACTER]:
             return self.comment or self.pattern
         else:
             return f"{FRENZY_NAMES_SINGULAR[self.getFrenzyType()]}:{self.getFrenzyValueStr()}"
@@ -301,13 +301,21 @@ class AudioRule:
                 continue
             index2 = match.start(0)
             yield s[index:index2]
-            yield self.speechCommand
-            if self.passThrough:
-                # returning masked string to avoid other rules processing this punctuation mark again
-                yield MaskedString(match.group(0))
-            if self.postSpeechCommand is not None:
-                yield match.group(0)
-                yield self.postSpeechCommand
+            if (
+                self.ruleType == audioRuleTextSubstitution
+                and self.getFrenzyType() == FrenzyType.PRE_TEXT_REWRITE
+            ):
+                repl = match.expand(self.replacementPattern or "")
+                if repl:
+                    yield repl
+            else:
+                yield self.speechCommand
+                if self.passThrough:
+                    # returning masked string to avoid other rules processing this punctuation mark again
+                    yield MaskedString(match.group(0))
+                if self.postSpeechCommand is not None:
+                    yield match.group(0)
+                    yield self.postSpeechCommand
             index = match.end(0)
         yield s[index:]
 
@@ -368,7 +376,13 @@ def reloadRules():
     }
 
 def onPostNvdaStartup():
-    if any([len(rule.urlRegex) > 0 for rule in rulesByFrenzy[FrenzyType.TEXT]]) and not isURLResolutionAvailable():
+    if any(
+        [
+            len(rule.urlRegex) > 0
+            for rule in rulesByFrenzy[FrenzyType.TEXT]
+            + rulesByFrenzy.get(FrenzyType.PRE_TEXT_REWRITE, [])
+        ]
+    ) and not isURLResolutionAvailable():
         wx.CallAfter(
             gui.messageBox,
             _(
@@ -396,6 +410,18 @@ def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
             symbolLevel=config.conf["speech"]["symbolLevel"]
         newSequence = speechSequence
         appName, windowTitle, url = getCurrentContext()
+        try:
+            preRules = rulesByFrenzy.get(FrenzyType.PRE_TEXT_REWRITE, [])
+        except Exception:
+            preRules = []
+        for rule in preRules:
+            if len(rule.applicationFilterRegex) > 0 and not rule._applicationFilterRegex.search(appName):
+                continue
+            if len(rule.windowTitleRegex) > 0 and not rule._windowTitleRegex.search(windowTitle):
+                continue
+            if len(rule.urlRegex) > 0 and (url is None or not rule._urlRegex.search(url)):
+                continue
+            newSequence = processRule(newSequence, rule, symbolLevel)
         for rule in rulesByFrenzy[FrenzyType.TEXT]:
             if len(rule.applicationFilterRegex) > 0 and not rule._applicationFilterRegex.search(appName):
                 continue
